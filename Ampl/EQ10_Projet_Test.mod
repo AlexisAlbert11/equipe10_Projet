@@ -12,7 +12,6 @@ param M := 2 * n; # Big-M pour désactiver les contraintes de sous-tours lorsque
 param cout_km {B};
 param cout_mise_en_route {B};
 param vitesse_moyenne;
-param temps_arrive;
 
 # VARIABLES DE DÉCISION
 var deplacement {L, L, B} binary; # x[i, j, b] = 1 si on voyage de i à j avec le bus b
@@ -118,11 +117,11 @@ subject to cb_etudiant_ds_bus {b in B}:
 
 ### GESTION DES TEMPS/DÉLAI ###
 subject to heure_arrive {b in B, i in L, j in L: i != j}:
-	temps[i, j, b] = (deplacement[i, j, b] * d[i, j]) / vitesse_moyenne;
+	temps[i, j, b] = (deplacement[i, j, b] * d[i, j]) / (vitesse_moyenne/60);
 
 # Les élèves ne peut pas passer plus d'une heure pas semaine
-#subject to temps_par_bus_avec_élèves {b in B}:
-	#sum {i in L, j in L : i != j and i != 0} temps[i,j,b] <= 60;
+subject to temps_par_bus_avec_élèves {b in B}:
+	sum {i in L, j in L : i != j and i != 0} temps[i,j,b] <= 90;
 
 
     

@@ -8,12 +8,6 @@ class Solver:
         self.max_time_sec = max_time_sec
         self._last_run_start = 0 
         self._last_run_end = 0
-        # Niveau de détails pour la sortie console.
-        # Interprétation:
-        # 0: Aucune sortie
-        # 1: Sortie minimale
-        # 2: Sortie détaillée
-        # >2: Niveau débogage
         self.verbose = 1
 
     def _prepare(self):
