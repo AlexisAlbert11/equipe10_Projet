@@ -1,0 +1,17 @@
+reset;
+
+model EQ10_Projet_Test.mod;
+data EQ10_Projet_Test.dat;
+option solver gurobi;
+#option gurobi_options 'iis 1';
+solve;
+expand > EQ10_Projet_Test.txt;
+#display _iis_con, _iis_var;
+option solver gurobi;
+solve;
+display u;
+display assignation;
+display nb_etudiant_dans_bus;
+display utilise_bus;
+display deplacement;
+display {i in L, j in L, b in B: i != j} d[i, j] * deplacement[i, j, b];
