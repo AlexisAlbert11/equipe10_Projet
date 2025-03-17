@@ -1,6 +1,7 @@
 import copy
 import pandas as pd
 import requests
+import json
 
 class Coordinates:
     def __init__(self, coordinates_matrix=[[]], lieux=None, fichier_excel=None, sheet_name=0):
@@ -8,15 +9,21 @@ class Coordinates:
             lieux, coordinates_matrix = self.lire_excel(fichier_excel, sheet_name)
         self._coordinates_matrix = copy.deepcopy(coordinates_matrix)
         self._lieux = lieux if lieux else [f"Lieu {i+1}" for i in range(len(coordinates_matrix))]
-        self._api_key = 'AIzaSyBO9Z54wXRhMwm-KdVh7tyLebe8_5SXO7w'
+        self._api_key = 'AIzaSyA8QNEs31E8vztVT-8d3-sEAd6h6KUcyGk'  # Utilisez votre clé API
 
     def lire_excel(self, fichier_excel, sheet_name):
-        df = pd.read_excel(fichier_excel, sheet_name=sheet_name, usecols=[2, 3, 4], skiprows=1, nrows=31)
-        lieux = [x for x in df.iloc[:, 0].tolist() if pd.notna(x)]
-        latitudes = [x for x in df.iloc[:, 1].tolist() if pd.notna(x)]
-        longitudes = [x for x in df.iloc[:, 2].tolist() if pd.notna(x)]
-        coordinates = [(lat, lon) for lat, lon in zip(latitudes, longitudes) if pd.notna(lat) and pd.notna(lon)]
+        df = pd.read_excel(fichier_excel, sheet_name=sheet_name, usecols=[2, 3, 4], skiprows=2, nrows=32)  # Lire de la ligne 3 à 34
+        lieux = [x for x in df.iloc[:, 0].tolist() if pd.notna(x) and isinstance(x, str)]
+        latitudes = [x for x in df.iloc[:, 1].tolist() if pd.notna(x) and isinstance(x, (int, float))]
+        longitudes = [x for x in df.iloc[:, 2].tolist() if pd.notna(x) and isinstance(x, (int, float))]
+        # Vérifier que les listes ont la même longueur
+        min_length = min(len(lieux), len(latitudes), len(longitudes))
+        lieux = lieux[:min_length]
+        latitudes = latitudes[:min_length]
+        longitudes = longitudes[:min_length]
+        coordinates = [(lat, lon) for lat, lon in zip(latitudes, longitudes)]
         coordinates_matrix = [[coord] for coord in coordinates]
+        print(f"Lieux lus : {lieux}")  # Débogage pour vérifier les lieux
         return lieux, coordinates_matrix
 
     def __str__(self):
@@ -52,48 +59,65 @@ class Coordinates:
             return [[]]
         print(f"Calcul des distances pour {n} lieux ({n*n} paires)...")
         distance_matrix = [[0.0 for _ in range(n)] for _ in range(n)]
+        
         try:
             print("Préparation des données pour la requête API...")
-            batch_size = 25
+            batch_size = 25  # Limite pour rester sous 625 éléments (25 x 25 = 625)
             for start in range(0, n, batch_size):
                 end = min(start + batch_size, n)
-                origins_batch = [f"{lat},{lon}" for lat, lon in coords[start:end]]
-                for dest_start in range(0, n, batch_size):
-                    dest_end = min(dest_start + batch_size, n)
-                    destinations_batch = [f"{lat},{lon}" for lat, lon in coords[dest_start:dest_end]]
-                    print(f"Traitement du bloc {start}-{end} vers {dest_start}-{dest_end}...")
-                    url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                    params = {
-                        "origins": "|".join(origins_batch),
-                        "destinations": "|".join(destinations_batch),
-                        "mode": "driving",
-                        "key": self._api_key
+                origins = [{"waypoint": {"location": {"latLng": {"latitude": lat, "longitude": lon}}}} for lat, lon in coords[start:end]]
+                # Limiter les destinations au même batch_size pour respecter 625
+                dest_batch_size = min(batch_size, n)
+                for dest_start in range(0, n, dest_batch_size):
+                    dest_end = min(dest_start + dest_batch_size, n)
+                    destinations = [{"waypoint": {"location": {"latLng": {"latitude": lat, "longitude": lon}}}} for lat, lon in coords[dest_start:dest_end]]
+                    
+                    print(f"Traitement du bloc {start}-{end} (origines) vers {dest_start}-{dest_end} (destinations)...")
+                    url = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
+                    headers = {
+                        "Content-Type": "application/json",
+                        "X-Goog-Api-Key": self._api_key,
+                        "X-Goog-FieldMask": "originIndex,destinationIndex,distanceMeters"
                     }
-                    print("Envoi de la requête à l'API Distance Matrix...")
-                    response = requests.get(url, params=params, timeout=30)
-                    response.raise_for_status()
+                    payload = {
+                        "origins": origins,
+                        "destinations": destinations,
+                        "travelMode": "DRIVE",
+                        "routingPreference": "TRAFFIC_AWARE"
+                    }
+                    
+                    print("Envoi de la requête à la Routes API...")
+                    response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=30)
+                    if response.status_code != 200:
+                        print(f"Détails de la requête : {json.dumps(payload)}")  # Débogage
+                        print(f"Détails de la réponse : {response.text}")
+                        response.raise_for_status()
                     result = response.json()
+                    
                     print("Réponse reçue. Traitement des données...")
-                    if result["status"] != "OK":
-                        print("Détails de la réponse :", result)
-                        raise ValueError(f"Erreur de l'API Distance Matrix : {result.get('status')}")
-                    for i, row in enumerate(result["rows"]):
-                        for j, element in enumerate(row["elements"]):
-                            if element["status"] == "OK":
-                                distance_meters = element["distance"]["value"]
+                    # Vérifier si result est une liste directement
+                    entries = result if isinstance(result, list) else result.get("routes", [])
+                    for entry in entries:
+                        if isinstance(entry, dict):  # Vérifier que c'est un dictionnaire
+                            origin_idx = entry.get("originIndex")
+                            dest_idx = entry.get("destinationIndex")
+                            if "distanceMeters" in entry:
+                                distance_meters = entry["distanceMeters"]
                                 distance_km = round(distance_meters / 1000.0, 2)
-                                global_i = start + i
-                                global_j = dest_start + j
+                                global_i = start + origin_idx
+                                global_j = dest_start + dest_idx
                                 distance_matrix[global_i][global_j] = distance_km
-                                distance_matrix[global_j][global_i] = distance_km
+                                distance_matrix[global_j][global_i] = distance_km  # Symétrique pour driving
                                 print(f"Distance entre {global_i} et {global_j} : {distance_km} km")
                             else:
-                                print(f"Pas de distance entre {start+i} et {dest_start+j} : {element['status']}")
+                                print(f"Pas de distance entre {start+origin_idx} et {dest_start+dest_idx} : {entry.get('status', 'N/A')}")
+
         except requests.exceptions.Timeout:
             print("Erreur : La requête a dépassé le délai (timeout). Utilisation d'une matrice par défaut.")
         except requests.exceptions.RequestException as e:
-            print(f"Attention : Échec de l'API Distance Matrix ({str(e)}). Utilisation d'une matrice par défaut de 0.")
+            print(f"Attention : Échec de la Routes API ({str(e)}). Utilisation d'une matrice par défaut de 0.")
         except Exception as e:
             print(f"Erreur inattendue : {str(e)}. Utilisation d'une matrice par défaut de 0.")
+        
         print("Matrice de distances calculée.")
         return distance_matrix
