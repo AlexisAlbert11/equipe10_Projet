@@ -175,47 +175,50 @@ Lieux3 = ["Entreprise", "École", "Lieu1", "Lieu2", "Lieu3", "Lieu4", "Lieu5", "
 Lieux = [Lieux1, Lieux2, Lieux3]
 
 # Définir le nombre d'étudiants pour chaque instance (convertir les chaînes en entiers)
-nb_etudiant1 = [int(x) for x in ["2", "18", "7", "19", "19", "20", "8", "19", "7", "2", "7", "16", "13", "16", "19", "2", "8", "15", "20", "11", "17", "3", "13", "16", "19", "18", "7", "5"]]
-nb_etudiant2 = [int(x) for x in ["1", "10", "8", "20", "6", "3", "6", "12", "15", "4", "17", "1", "15", "8", "13", "10", "12", "7", "18", "15", "17", "9", "15", "1", "13", "6", "15", "9"]]
-nb_etudiant3 = [int(x) for x in ["9", "15", "13", "9", "19", "12", "15", "14", "18", "6", "6", "8", "19", "2", "12", "13", "16", "20", "3", "6", "8", "19", "3", "19", "12", "16", "4", "14"]]
+nb_etudiant1 = [int(x) for x in ["0", "0", "2", "18", "7", "19", "19", "20", "8", "19", "7", "2", "7", "16", "13", "16", "19", "2", "8", "15", "20", "11", "17", "3", "13", "16", "19", "18", "7", "5"]]
+nb_etudiant2 = [int(x) for x in ["0", "0", "1", "10", "8", "20", "6", "3", "6", "12", "15", "4", "17", "1", "15", "8", "13", "10", "12", "7", "18", "15", "17", "9", "15", "1", "13", "6", "15", "9"]]
+nb_etudiant3 = [int(x) for x in ["0", "0", "9", "15", "13", "9", "19", "12", "15", "14", "18", "6", "6", "8", "19", "2", "12", "13", "16", "20", "3", "6", "8", "19", "3", "19", "12", "16", "4", "14"]]
 
 nb_etudiant = [nb_etudiant1, nb_etudiant2, nb_etudiant3]
 
 # Définir les vitesses moyennes pour chaque instance
 vitesses_moyennes = [40, 30, 50]
 
+#Tester une instance
+
+
 # Traiter chaque instance séparément
-for i in range(3):
-    print(f"\n=== Instance {i + 1} ===")
-    print(f"Vitesse moyenne: {vitesses_moyennes[i]} km/h")
-    print(f"Nombre total d'étudiants: {sum(nb_etudiant[i])}")
-    print("Lieux et nombre d'étudiants par lieu:")
-    for lieu, nb in zip(Lieux[i], nb_etudiant[i]):
-        print(f"  {lieu}: {nb} étudiants")
-    print("Bus disponibles:")
-    for b in buses[i]:
-        print(f"  Bus {b.id} - Capacité: {b.capacity}, Coût par km: {b.cost_per_km}, Coût de mise en route: {b.startup_cost}")
+# for i in range(3):
+#     print(f"\n=== Instance {i + 1} ===")
+#     print(f"Vitesse moyenne: {vitesses_moyennes[i]} km/h")
+#     print(f"Nombre total d'étudiants: {sum(nb_etudiant[i])}")
+#     print("Lieux et nombre d'étudiants par lieu:")
+#     for lieu, nb in zip(Lieux[i], nb_etudiant[i]):
+#         print(f"  {lieu}: {nb} étudiants")
+#     print("Bus disponibles:")
+#     for b in buses[i]:
+#         print(f"  Bus {b.id} - Capacité: {b.capacity}, Coût par km: {b.cost_per_km}, Coût de mise en route: {b.startup_cost}")
 
-    # Créer le problème pour cette instance
-    problem = frp.FastRouteProb(
-        dist_matrices=[dist_matrixes[i]],  # Une seule matrice par instance
-        lieux=Lieux[i],
-        nb_etudiant=nb_etudiant[i],
-        buses=buses[i],
-        vitesse_moyenne=vitesses_moyennes[i]
-    )
+#     # Créer le problème pour cette instance
+#     problem = frp.FastRouteProb(
+#         dist_matrices=[dist_matrixes[i]],  # Une seule matrice par instance
+#         lieux=Lieux[i],
+#         nb_etudiant=nb_etudiant[i],
+#         buses=buses[i],
+#         vitesse_moyenne=vitesses_moyennes[i]
+#     )
 
-    # Résoudre le problème
-    solver = frp_solver.FrpAmplMipSolver()
-    routes = solver.solve(problem)
+#     # Résoudre le problème
+#     solver = frp_solver.FrpAmplMipSolver()
+#     routes = solver.solve(problem)
 
-    # Afficher les résultats pour cette instance
-    print("\nRésultats de l'optimisation:")
-    if not routes:
-        print("Aucune solution trouvée.")
-    else:
-        for route in routes:
-            route.validate()  # Valider l'itinéraire et vérifier les étudiants
-            print(route)
-    print("=" * 50)
+#     # Afficher les résultats pour cette instance
+#     print("\nRésultats de l'optimisation:")
+#     if not routes:
+#         print("Aucune solution trouvée.")
+#     else:
+#         for route in routes:
+#             route.validate()  # Valider l'itinéraire et vérifier les étudiants
+#             print(route)
+#     print("=" * 50)
 #Tests

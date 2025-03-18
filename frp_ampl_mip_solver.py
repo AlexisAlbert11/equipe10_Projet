@@ -5,22 +5,23 @@ import amplpy
 import os
 import numpy as np
 import pandas as pd
+import bus as bus
+import élève_solution as élève
 
 class FrpAmplMipSolver(solver.Solver):
     def __init__(self):
         super().__init__()
 
-    def solve(self, problem_instance: frp.FastRouteProb = None):
+    def solve(self, problem_instance: frp.FastRouteProb = None, Autobus: bus.Bus = None, Étudiants: élève.Élève = None, vitesse_moyenne = None):
         if problem_instance is None:
             raise ValueError("Aucun problème n'a été fourni.")
 
         # Récupérer les paramètres depuis FastRouteProb
         n = problem_instance.count_locations()
-        dist_matrix = problem_instance.get_dist_matrix(instance_idx=0)
-        lieux = problem_instance.get_lieux()
-        nb_etudiant = problem_instance.get_nb_etudiant()
-        buses = problem_instance.get_buses()
-        vitesse_moyenne = problem_instance.get_vitesse_moyenne()
+        dist_matrix = problem_instance # une liste de liste
+        Autobus = Autobus #Une liste de liste
+        nb_etudiant = Étudiants # Une liste
+        vitesse_moyenne = vitesse_moyenne
 
         # Calculer les paramètres dérivés
         total_etudiants = sum(nb_etudiant)
@@ -82,19 +83,49 @@ class FrpAmplMipSolver(solver.Solver):
         temps_values = ampl.getVariable('temps').getValues().toDict()
         solution_data['temps'] = temps_values
 
-        # Extraire les séquences d'itinéraires à partir de u pour chaque bus
-        routes = []
-        for b in B_values:
-            if utilise_bus_values.get((b,), 0) == 1:  # Si le bus est utilisé
-                u_b = [(i, val) for (i, b_val), val in u_values.items() if b_val == b]
-                u_b_sorted = sorted(u_b, key=lambda x: x[1] if x[1] > 0 else float('inf'))
-                visit_sequence = [item[0] for item in u_b_sorted if item[1] > 0]
+        #Ici il faut filter les 0 dans u et que l'addition de toutes les en ordre =  la séquence de tous les lieux
+        #Il faut aussi envoyer le nombre d'étudiants total dans la class élève pour qu'elle valide s'ils sont tous ramassés
+        #Il faut envoyer le temps que ca a pris pour chaque bus dans classe bus pour calculer leur heure de départ
+        #
 
-                # Créer une route pour ce bus
-                route = rsol.Route(problem_instance)
-                route.visit_sequence = visit_sequence
-                route.bus_id = b  # Ajouter l'ID du bus à la route
-                route.variables = solution_data  # Stocker toutes les variables AMPL dans la route
-                routes.append(route)
+        # Calculer le nombre d'étudiants ramassés par lieu
+        # etudiants_ramasses = {l: 0 for l in L_values}
+        # for (l, b), val in assignation_values.items():
+        #     if val > 0:  # Si le lieu l est assigné au bus b
+        #         etudiants_ramasses[l] += nb_etudiant[l] * val
 
-        return routes
+        # # Définir les indices explicites pour l'entreprise et l'école
+        # entreprise_idx = 0  # À ajuster si nécessaire dans votre problème
+        # ecole_idx = 1  # À ajuster si nécessaire dans votre problème
+        # problem_instance.entreprise_idx = entreprise_idx
+        # problem_instance.ecole_idx = ecole_idx
+
+        # # Extraire les séquences d'itinéraires à partir de u pour chaque bus
+        # routes = []
+        # for b in B_values:
+        #     u_b = [(i, val) for (i, b_val), val in u_values.items() if b_val == b]
+        #     all_zeros = all(val == 0 for _, val in u_b)
+            
+        #     if utilise_bus_values.get((b,), 0) == 1:  # Si le bus est utilisé
+        #         if all_zeros:
+        #             # Si toutes les valeurs sont 0, garder uniquement les zéros
+        #             visit_sequence = [i for i, val in u_b]
+        #         else:
+        #             # Filtrer les zéros et trier par ordre de visite
+        #             u_b_filtered = [(i, val) for i, val in u_b if val > 0]
+        #             u_b_sorted = sorted(u_b_filtered, key=lambda x: x[1])
+        #             visit_sequence = [item[0] for item in u_b_sorted]
+        #     else:
+        #         # Bus non utilisé : séquence vide
+        #         visit_sequence = []
+
+        #     # Créer une route pour ce bus
+        #     route = rsol.Route(problem_instance)
+        #     route.visit_sequence = visit_sequence
+        #     route.bus_id = b
+        #     route.variables = solution_data
+        #     route.etudiants_ramasses = etudiants_ramasses
+        #     route.nb_etudiant_initial = nb_etudiant
+        #     routes.append(route)
+
+        # return routes
