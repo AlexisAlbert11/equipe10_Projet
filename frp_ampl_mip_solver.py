@@ -12,7 +12,7 @@ class FrpAmplMipSolver(solver.Solver):
     def __init__(self):
         super().__init__()
 
-    def solve(self, problem_instance: frp.FastRouteProb = None, Autobus: bus.Bus = None, Étudiants: élève.Élève = None, vitesse_moyenne = None):
+    def solve(self, problem_instance: frp.FastRouteProb = None, Autobus= [], Étudiants: élève.Élève = None, vitesse_moyenne = None):
         if problem_instance is None:
             raise ValueError("Aucun problème n'a été fourni.")
 
@@ -20,8 +20,8 @@ class FrpAmplMipSolver(solver.Solver):
         n = problem_instance.count_locations()
         nombre_de_bus = len(Autobus)
         dist_matrix = problem_instance # une liste de liste
-        Autobus = Autobus #Une liste de liste
-        nb_etudiant = Étudiants # Une liste
+        Autobus = Autobus #Une liste d'objet bus'
+        nb_etudiant_total = sum(Étudiant) # Une liste
         vitesse_moyenne = vitesse_moyenne
 
         # Calculer les paramètres dérivés
