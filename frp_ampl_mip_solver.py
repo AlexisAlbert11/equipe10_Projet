@@ -18,6 +18,7 @@ class FrpAmplMipSolver(solver.Solver):
 
         # Récupérer les paramètres depuis FastRouteProb
         n = problem_instance.count_locations()
+        nombre_de_bus = len(Autobus)
         dist_matrix = problem_instance # une liste de liste
         Autobus = Autobus #Une liste de liste
         nb_etudiant = Étudiants # Une liste
@@ -29,11 +30,11 @@ class FrpAmplMipSolver(solver.Solver):
 
         # Préparer les ensembles et paramètres pour AMPL
         L_values = [i for i in range(n)]
-        B_values = [bus.id for bus in buses]
+        B_values = [i for i in range(nombre_de_bus)]
         d_df = pd.DataFrame(dist_matrix, columns=L_values, index=L_values)
-        cap_bus = {bus.id: bus.capacity for bus in buses}
-        cout_km = {bus.id: bus.cost_per_km for bus in buses}
-        cout_mise_en_route = {bus.id: bus.startup_cost for bus in buses}
+        cap_bus = {Autobus.id: Autobus.capacity for Autobus in Autobus}
+        cout_km = {Autobus.id: Autobus.cost_per_km}
+        cout_mise_en_route = {Autobus.id: Autobus.startup_cost}
 
         # Initialiser AMPL
         ampl_path = os.path.normpath('C:/Users/ALALB18/AMPL')
