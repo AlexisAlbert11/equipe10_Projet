@@ -1,32 +1,43 @@
 import solution as sol
-import bus as bus
-import fastroute_problem as frp
-
+import sys
 
 class Route(sol.Solution):
-    def __init__(self, problem):
-        super().__init__(problem)
-        self.visit_sequence = []
-        self.bus_id = None  # ID du bus associé à cette route
-        self.variables = {}  # Variables extraites d'AMPL
-        self.etudiants_ramasses = {}  # Étudiants ramassés par lieu
-        self.nb_etudiant_initial = []  # Nombre initial d'étudiants par lieu
-        self.valid_itinerary = False  # Résultat de la validation de l'itinéraire
-        self.all_students_picked = False  # Résultat de la vérification des étudiants
-        self.valid_assignation = False  # Résultat de la vérification des assignations
-
-    def evaluate(self):
-        total_distance = 0
-        dist_matrix = self.problem.get_dist_matrix()
-        for i in range(len(self.visit_sequence) - 1):
-            total_distance += dist_matrix[self.visit_sequence[i]][self.visit_sequence[i + 1]]
-        return total_distance
-
-    def validate(self):
-        # Étape 1 : Vérifier si la séquence est valide (non vide et cohérente)
-        if not self.visit_sequence:
-            self.valid_itinerary = False
-        pass
+    def __init__(self, solvedProblem):
+        super(Route, self).__init__()
+        self.visit_sequences = {}  # Dict {bus: liste des lieux visités}
+        self.problem = solvedProblem  # Instance de FastRouteProb
 
     def __str__(self):
-        pass
+        tmp_str = ""
+        for bus, seq in self.visit_sequences.items():
+            if seq:  # Ne pas afficher les bus sans séquence
+                tmp_str += f"Bus {bus}: {', '.join(str(i) for i in seq)}\n"
+        return tmp_str.strip()
+
+    def validate(self):
+        """
+        Vérifie que l'ensemble des séquences couvre tous les lieux (0 à n-1) exactement une fois.
+        """
+        all_locations = set()
+        for seq in self.visit_sequences.values():
+            all_locations.update(seq)
+        expected_locations = list(range(self.problem.count_locations()))
+        return sorted(all_locations) == expected_locations
+
+    def evaluate(self):
+        """
+        Calcule la somme des distances parcourues par tous les bus.
+        Retourne sys.float_info.max si la solution n'est pas valide.
+        """
+        if not self.validate():
+            return sys.float_info.max
+
+        obj_val = 0
+        for seq in self.visit_sequences.values():
+            if seq:  # Ignorer les séquences vides
+                for i in range(len(seq) - 1):
+                    curr_source = seq[i]
+                    curr_destination = seq[i + 1]
+                    curr_distance = self.problem._dist_matrix[curr_source][curr_destination]
+                    obj_val += curr_distance
+        return obj_val
