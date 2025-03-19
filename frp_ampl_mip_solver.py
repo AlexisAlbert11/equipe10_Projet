@@ -12,16 +12,16 @@ class FrpAmplMipSolver(solver.Solver):
     def __init__(self):
         super().__init__()
 
-    def solve(self, problem_instance: frp.FastRouteProb = None, Autobus= [], Étudiants: élève.Élève = None, vitesse_moyenne = None):
+    def solve(self, problem_instance: frp.FastRouteProb = None, Autobus = [], Étudiants: élève.Élève = None, vitesse_moyenne = None):
         if problem_instance is None:
             raise ValueError("Aucun problème n'a été fourni.")
 
-        # Récupérer les paramètres depuis FastRouteProb
+        # Récupérer des paramêtres
         n = problem_instance.count_locations()
         nombre_de_bus = len(Autobus)
-        dist_matrix = problem_instance # une liste de liste
+        dist_matrix = np.array(problem_instance._dist_matrix) # une liste de liste
         Autobus = Autobus #Une liste d'objet bus'
-        nb_etudiant_total = sum(Étudiant) # Une liste
+        nb_etudiant = [etudiant.nb_etudiant for etudiant in Étudiants] # Une liste
         vitesse_moyenne = vitesse_moyenne
 
         # Calculer les paramètres dérivés
@@ -29,15 +29,17 @@ class FrpAmplMipSolver(solver.Solver):
         M = 2 * n
 
         # Préparer les ensembles et paramètres pour AMPL
+        #SET
         L_values = [i for i in range(n)]
         B_values = [i for i in range(nombre_de_bus)]
+        #param
         d_df = pd.DataFrame(dist_matrix, columns=L_values, index=L_values)
         cap_bus = {Autobus.id: Autobus.capacity for Autobus in Autobus}
-        cout_km = {Autobus.id: Autobus.cost_per_km}
-        cout_mise_en_route = {Autobus.id: Autobus.startup_cost}
-
+        cout_km = {bus.id: bus.cost_per_km for bus in Autobus}
+        cout_mise_en_route = {bus.id: bus.startup_cost for bus in Autobus}
         # Initialiser AMPL
-        ampl_path = os.path.normpath('C:/Users/ALALB18/AMPL')
+        #ampl_path = os.path.normpath('C:/Users/ALALB18/AMPL')
+        ampl_path = os.path.normpath('C:/AMPL')
         ampl_env = amplpy.Environment(ampl_path)
         ampl = amplpy.AMPL(ampl_env)
 
@@ -45,21 +47,20 @@ class FrpAmplMipSolver(solver.Solver):
         ampl.setOption('solver', 'gurobi')
         ampl.setOption('gurobi_options', f'timelim {self.max_time_sec} outlev 1')
 
-        # Charger le modèle AMPL
-        model_dir = os.path.normpath('C:/equipe10_Projet/Ampl')
+        # Charger le modèle AMPL Alex
+        # model_dir = os.path.normpath('C:/equipe10_Projet/Ampl')
+        # ampl.read(os.path.join(model_dir, 'EQ10_Projet_Test.mod'))
+        #Charger Joel
+        model_dir = os.path.normpath('D:/SIAD/Projet session/Python/Ampl')
         ampl.read(os.path.join(model_dir, 'EQ10_Projet_Test.mod'))
-
         # Définir les ensembles
         ampl.set["L"] = L_values
         ampl.set["B"] = B_values
 
         # Définir les paramètres
-        ampl.param["n"] = n
         ampl.param["d"] = d_df
         ampl.param["nb_etudiant"] = pd.Series(nb_etudiant, index=L_values)
         ampl.param["cap_bus"] = cap_bus
-        ampl.param["total_etudiants"] = total_etudiants
-        ampl.param["M"] = M
         ampl.param["cout_km"] = cout_km
         ampl.param["cout_mise_en_route"] = cout_mise_en_route
         ampl.param["vitesse_moyenne"] = vitesse_moyenne
@@ -67,66 +68,97 @@ class FrpAmplMipSolver(solver.Solver):
         # Résoudre le modèle
         ampl.solve()
 
-        # Récupérer toutes les variables
-        solution_data = {}
-        deplacement_values = ampl.getVariable('deplacement').getValues().toDict()
-        solution_data['deplacement'] = deplacement_values
-        u_values = ampl.getVariable('u').getValues().toDict()
-        solution_data['u'] = u_values
-        assignation_values = ampl.getVariable('assignation').getValues().toDict()
-        solution_data['assignation'] = assignation_values
-        nb_etudiant_dans_bus_values = ampl.getVariable('nb_etudiant_dans_bus').getValues().toDict()
-        solution_data['nb_etudiant_dans_bus'] = nb_etudiant_dans_bus_values
-        utilise_bus_values = ampl.getVariable('utilise_bus').getValues().toDict()
-        solution_data['utilise_bus'] = utilise_bus_values
-        u_max_values = ampl.getVariable('u_max').getValues().toDict()
-        solution_data['u_max'] = u_max_values
-        temps_values = ampl.getVariable('temps').getValues().toDict()
-        solution_data['temps'] = temps_values
 
-        #Ici il faut filter les 0 dans u et que l'addition de toutes les en ordre =  la séquence de tous les lieux
-        #Il faut aussi envoyer le nombre d'étudiants total dans la class élève pour qu'elle valide s'ils sont tous ramassés
-        #Il faut envoyer le temps que ca a pris pour chaque bus dans classe bus pour calculer leur heure de départ
         #
+        u_values = ampl.getVariable("u").getValues().toList()
+        # Variable deplacement
+        d_values = ampl.getVariable("deplacement").getValues().toList()
+        # Valeur de deplacement par autobus
+        distance_bus = ampl.getVariable("d_bus").getValues().toList()
+        
+        
+        ### TRAITEMENT/TRANSFORMATION DE LA VARIABLE U ###
+        liste_voyage_bus = []
+        ordre_bus_liste = []
+        
+        
+        for x, y, z in u_values: # Création d'une liste avec les déplacement fait (On laisse de côté les tuples qui représentent zéro déplacement)
+            if z != 0:
+                liste_voyage_bus.append((x, y, z))
+            else:
+                continue
 
-        # Calculer le nombre d'étudiants ramassés par lieu
-        # etudiants_ramasses = {l: 0 for l in L_values}
-        # for (l, b), val in assignation_values.items():
-        #     if val > 0:  # Si le lieu l est assigné au bus b
-        #         etudiants_ramasses[l] += nb_etudiant[l] * val
 
-        # # Définir les indices explicites pour l'entreprise et l'école
-        # entreprise_idx = 0  # À ajuster si nécessaire dans votre problème
-        # ecole_idx = 1  # À ajuster si nécessaire dans votre problème
-        # problem_instance.entreprise_idx = entreprise_idx
-        # problem_instance.ecole_idx = ecole_idx
+        ###    PREPARATION  POUR VALIDATE DE ROUTE    ###
 
-        # # Extraire les séquences d'itinéraires à partir de u pour chaque bus
-        # routes = []
-        # for b in B_values:
-        #     u_b = [(i, val) for (i, b_val), val in u_values.items() if b_val == b]
-        #     all_zeros = all(val == 0 for _, val in u_b)
-            
-        #     if utilise_bus_values.get((b,), 0) == 1:  # Si le bus est utilisé
-        #         if all_zeros:
-        #             # Si toutes les valeurs sont 0, garder uniquement les zéros
-        #             visit_sequence = [i for i, val in u_b]
-        #         else:
-        #             # Filtrer les zéros et trier par ordre de visite
-        #             u_b_filtered = [(i, val) for i, val in u_b if val > 0]
-        #             u_b_sorted = sorted(u_b_filtered, key=lambda x: x[1])
-        #             visit_sequence = [item[0] for item in u_b_sorted]
-        #     else:
-        #         # Bus non utilisé : séquence vide
-        #         visit_sequence = []
 
-        #     # Créer une route pour ce bus
-        #     route = rsol.Route(problem_instance)
-        #     route.visit_sequence = visit_sequence
-        #     route.bus_id = b
-        #     route.variables = solution_data
-        #     route.etudiants_ramasses = etudiants_ramasses
-        #     route.nb_etudiant_initial = nb_etudiant
-        #     routes.append(route)
+        bus_dict = {}        # Création d'un dictionnaire vide
 
-        # return routes
+        # Remplissage du dictionnaire
+        for ville, bus, ordre in liste_voyage_bus:
+            if bus not in bus_dict:
+                bus_dict[bus] = []  # On ajoute d'une liste si bus n'est pas dedans
+            bus_dict[bus].append((ordre, ville))  # Remplis la liste qui vient d'etre créer avec u et la ville
+
+        # Trier les villes pour chaque autobus selon l'ordre de visite
+        for bus in bus_dict:
+            bus_dict[bus].sort()  # Sert a trier selon les ordre (le premier élement)
+
+        # Affichage des résultats
+        for bus in sorted(bus_dict):  # Trie les bus par numéro
+            villes_triees = [ville for _, ville in bus_dict[bus]]  # Extraire les villes triées
+            print(f"Autobus {bus}: {villes_triees}")
+            ordre_bus_liste.append(villes_triees)
+        
+        liste_de_verification01 = [0, 1] # Parce que c'est aussi vérifier que les bus passent par 0,1 
+        for sous_liste in ordre_bus_liste:
+        # Parcours de chaque nombre dans la sous-liste
+            for num in sous_liste:
+        # Vérification que le nombre n'est ni 0 ni 1
+                if num not in (0, 1):
+            # Ajout du nombre à la liste filtrée
+                    liste_de_verification01.append(num)
+
+        # Tri de la liste obtenue
+        liste_de_verification01.sort()
+
+        ##      Calcul des distances totales parcourues      ##
+
+        somme_des_distances = 0
+        for x, y, z, k in d_values: 
+                somme_des_distances += k *problem_instance._dist_matrix[x][y]
+        print(somme_des_distances)
+        
+        
+
+        ###  Afficher les valeurs récupérées ###
+
+        #print("\nValeurs de u récupérées depuis AMPL :")
+        #print(type(u_values))
+        #print(u_values)
+        #print(liste_voyage_bus)
+        #print("ICI YAYA")
+        #print(ordre_bus_liste)
+        #print(liste_de_verification01)
+        #print("DEPLACEMENT")
+        #print(d_values)
+        print(distance_bus)
+
+
+
+        #Test de validation route
+        Route = rsol.Route(problem_instance)
+        Route.depart_fin =ordre_bus_liste
+        Route.visit_sequence = liste_de_verification01
+        return Route 
+
+        #Test de bus
+
+
+
+        #Test de élève
+        
+
+         
+
+        

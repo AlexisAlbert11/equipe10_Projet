@@ -4,29 +4,33 @@ import fastroute_problem as frp
 
 
 class Route(sol.Solution):
-    def __init__(self, problem):
-        super().__init__(problem)
+    def __init__(self, solvedProblem=frp.FastRouteProb()):
+        super(Route, self).__init__()
         self.visit_sequence = []
-        self.bus_id = None  # ID du bus associé à cette route
-        self.variables = {}  # Variables extraites d'AMPL
-        self.etudiants_ramasses = {}  # Étudiants ramassés par lieu
-        self.nb_etudiant_initial = []  # Nombre initial d'étudiants par lieu
-        self.valid_itinerary = False  # Résultat de la validation de l'itinéraire
-        self.all_students_picked = False  # Résultat de la vérification des étudiants
-        self.valid_assignation = False  # Résultat de la vérification des assignations
+        self.depart_fin = []
+        self.problem = solvedProblem
+        
 
     def evaluate(self):
-        total_distance = 0
-        dist_matrix = self.problem.get_dist_matrix()
-        for i in range(len(self.visit_sequence) - 1):
-            total_distance += dist_matrix[self.visit_sequence[i]][self.visit_sequence[i + 1]]
-        return total_distance
+        if self.validate()== False:
+       
+            raise ("Validation de route a échoué")
+        else:
+            print("Validation de route réussis")
 
     def validate(self):
-        # Étape 1 : Vérifier si la séquence est valide (non vide et cohérente)
-        if not self.visit_sequence:
-            self.valid_itinerary = False
-        pass
+        locations_list = list(range(0, self.problem.count_locations()))
+        
+        # Vérification que tous les lieux sont visités dans l'ordre attendu
+        if self.visit_sequence != locations_list:
+            return False
+        
+        # Vérification de toutes les listes dans depart_fin
+        for route in self.depart_fin:
+            if not (route[0] == 0 and route[-1] == 1):  # Vérifie que chaque route commence à 0 et finit à 1
+                return False
+
+        return True  # Si toutes les routes sont valides
 
     def __str__(self):
         pass
