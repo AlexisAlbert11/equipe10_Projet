@@ -4,7 +4,7 @@ import solution
 class Solver:
 
     def __init__(self,
-                 max_time_sec=10):
+                 max_time_sec=4):
         self.max_time_sec = max_time_sec
         self._last_run_start = 0 
         self._last_run_end = 0
