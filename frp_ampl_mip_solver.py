@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import bus as bus
 import élève_solution as élève
+import busfleet_bus as bfleet
 
 class FrpAmplMipSolver(solver.Solver):
     def __init__(self):
@@ -43,9 +44,8 @@ class FrpAmplMipSolver(solver.Solver):
         ampl_env = amplpy.Environment(ampl_path)
         ampl = amplpy.AMPL(ampl_env)
 
-        # Configurer AMPL
-        ampl.setOption('solver', 'gurobi')
-        ampl.setOption('gurobi_options', f'timelim {self.max_time_sec} outlev 1')
+        ampl.setOption('solver', 'cbc')
+        ampl.setOption('gurobi_options', 'timelim 10 outlev 1')
 
         # Charger le modèle AMPL Alex
         # model_dir = os.path.normpath('C:/equipe10_Projet/Ampl')
@@ -54,6 +54,8 @@ class FrpAmplMipSolver(solver.Solver):
         model_dir = os.path.normpath('D:/SIAD/Projet session/Python/Ampl')
         ampl.read(os.path.join(model_dir, 'EQ10_Projet_Test.mod'))
         # Définir les ensembles
+        L_values = [i for i in range(problem.count_locations())]
+        B_values = [i for i in range(len(bus_fleet.buses))]
         ampl.set["L"] = L_values
         ampl.set["B"] = B_values
 
@@ -65,7 +67,13 @@ class FrpAmplMipSolver(solver.Solver):
         ampl.param["cout_mise_en_route"] = cout_mise_en_route
         ampl.param["vitesse_moyenne"] = vitesse_moyenne
 
-        # Résoudre le modèle
+        # Définir les paramètres des bus à partir de bus_fleet.buses
+        ampl.param["cap_bus"] = {b: bus_fleet.buses[b].capacity for b in B_values}
+        ampl.param["cout_km"] = {b: bus_fleet.buses[b].cost_per_km for b in B_values}
+        ampl.param["cout_mise_en_route"] = {b: bus_fleet.buses[b].startup_cost for b in B_values}
+        ampl.param["vitesse_moyenne"] = bus_fleet.avg_speed
+
+        # Résoudre
         ampl.solve()
 
 

@@ -188,35 +188,23 @@ nb_etudiant3 = [0, 0, 9, 15, 13, 9, 19, 12, 15, 14]
 nb_etudiant = [nb_etudiant1, nb_etudiant2, nb_etudiant3]
 
 # Définir les vitesses moyennes pour chaque instance
-vitesses_moyennes = [40, 30, 50]
+vitesse_moyenne1 = 40
+vitesse_moyenne2 = 50 
+vitesse_moyenne3 = 60
 
-#Tester une instance
 
+###Tester une instance###
+problem = frp.FastRouteProb(dist_matrix1)
+bus_fleet = bfleet.BusFleet(buses1, vitesse_moyenne1)
+eleves_instance = élève.Eleves(nb_etudiant1)
+solver = frp_solver.FrpAmplMipSolver()
 
-# Traiter chaque instance séparément
-# for i in range(3):
-#     print(f"\n=== Instance {i + 1} ===")
-#     print(f"Vitesse moyenne: {vitesses_moyennes[i]} km/h")
-#     print(f"Nombre total d'étudiants: {sum(nb_etudiant[i])}")
-#     print("Lieux et nombre d'étudiants par lieu:")
-#     for lieu, nb in zip(Lieux[i], nb_etudiant[i]):
-#         print(f"  {lieu}: {nb} étudiants")
-#     print("Bus disponibles:")
-#     for b in buses[i]:
-#         print(f"  Bus {b.id} - Capacité: {b.capacity}, Coût par km: {b.cost_per_km}, Coût de mise en route: {b.startup_cost}")
+# Résolution
+result = solver.solve(problem, bus_fleet, eleves_instance)
+route_instance = result["route"]
 
-#     # Créer le problème pour cette instance
-#     problem = frp.FastRouteProb(
-#         dist_matrices=[dist_matrixes[i]],  # Une seule matrice par instance
-#         lieux=Lieux[i],
-#         nb_etudiant=nb_etudiant[i],
-#         buses=buses[i],
-#         vitesse_moyenne=vitesses_moyennes[i]
-#     )
-
-#     # Résoudre le problème
-#     solver = frp_solver.FrpAmplMipSolver()
-#     routes = solver.solve(problem)
+final_result = final.Final(result, problem, bus_fleet, eleves_instance, Lieux1)
+final_result.afficher()
 
 #     # Afficher les résultats pour cette instance
 #     print("\nRésultats de l'optimisation:")

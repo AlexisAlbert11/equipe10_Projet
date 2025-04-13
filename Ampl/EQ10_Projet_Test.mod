@@ -22,12 +22,17 @@ var utilise_bus {B} binary; # 1 si le bus est utilisé, 0 sinon
 var u_max {b in B} >= 0, <= n; # Variable auxiliaire pour le maximum de u[i, b]
 var temps {L, L, B};
 
-# FONCTION OBJECTIF : MINIMISER LE DÉPLACEMENT TOTAL
-#minimize Distance_Totale:
-    #sum {i in L, j in L, b in B: i != j} d[i, j] * deplacement[i, j, b];
+var etudiants_non_ramasses >= 0;
+
+
+subject to RamassageComplet:
+    sum{b in B} nb_etudiant_dans_bus[b]
+     + etudiants_non_ramasses = sum{i in L: i != 0 and i != 1} nb_etudiant[i];
 
 minimize Distance_Totale:
-    sum {i in L, j in L, b in B: i != j} d[i, j] * deplacement[i, j, b] * cout_km[b] + sum {b in B} cout_mise_en_route[b] * utilise_bus[b];
+    sum {i in L, j in L, b in B: i != j} d[i, j] * deplacement[i, j, b] * cout_km[b] + 
+    sum {b in B} cout_mise_en_route[b] * utilise_bus[b] +
+    10000 * etudiants_non_ramasses;
 
     
 # CONTRAINTES
